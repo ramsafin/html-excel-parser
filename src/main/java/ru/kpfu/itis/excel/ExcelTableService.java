@@ -33,14 +33,20 @@ public final class ExcelTableService {
 
         for (String keyRow : excelTable.rowKeys()) {
             int columnCount = 0;
+            CellType type; //cell type
             Row row = sheet.createRow(currentRow++); //increment rowCount
 
             for (String keyColumn : excelTable.columnKeys()) {
-
-                Cell cell = row.createCell(columnCount++, CellType.STRING); //increment columnCount
+                type = (columnCount >= 3 && isNumeric(excelTable.getValue(keyRow, keyColumn))) ? CellType.NUMERIC : CellType.STRING;
+                Cell cell = row.createCell(columnCount++, type); //increment columnCount
                 cell.setCellStyle(cellStyle); //style of cell
                 String value = excelTable.getValue(keyRow, keyColumn);
-                cell.setCellValue((value == null) ? "" : value); //to be sure
+
+                if (type == CellType.NUMERIC) {
+                    cell.setCellValue(getNumeric(value));
+                } else {
+                    cell.setCellValue((value == null) ? "" : value); //to be sure
+                }
             }
         }
 
@@ -50,6 +56,20 @@ public final class ExcelTableService {
             workbook.write(out); //write to file all workbook
         } finally {
             close(workbook);
+        }
+    }
+
+    private int getNumeric(String value) {
+        return value.isEmpty() ? 0 : Integer.parseInt(value);
+    }
+
+    private boolean isNumeric(String value) {
+        try {
+            if (value.isEmpty()) return true;
+            Integer.parseInt(value);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 

@@ -63,7 +63,7 @@ public final class HTMLTableService {
             public void accept(Element row) {
                 if (rowspan == 0) {
                     rowspan = Byte.parseByte(row.select(".c1").attr("rowspan"));
-                    name = row.select(".c1").text();
+                    name = cleanText(row.select(".c1"));
                 }
                 String dataId = row.attr("data-id");
                 --rowspan; //decrement rowspan
@@ -79,6 +79,11 @@ public final class HTMLTableService {
         });
 
         return table;
+    }
+
+
+    private String cleanText(Elements text) {
+        return text.text().replace("PAESE", "").replace("  ", "").replace("Paese", "").replace("paese", "");
     }
 
 
@@ -107,8 +112,8 @@ public final class HTMLTableService {
         for (ColumnHeaders headers : ColumnHeaders.values()) {
             values[i++] = headers.getColumnName();
         }
-        values[i - 1] = String.format("%s (%s)", values[i - 1],
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.YYYY HH:mm:ss")));
+        values[i - 1] = String.format("%s", LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("dd.MM.YYYY HH:mm:ss")));
 
         return values;
     }
@@ -119,9 +124,11 @@ public final class HTMLTableService {
      */
     public enum ColumnHeaders {
 
-        DATA_ID("data-id"), NAME("название"), TONE_NUMBER("номер тона"), MAX_COUNT("max кол-во");
+        DATA_ID("data-id"), NAME("название"), TONE_NUMBER("номер тона"), MAX_COUNT();
 
         private String name;
+
+        ColumnHeaders() { }
 
         ColumnHeaders(String header) {
             this.name = header;
@@ -130,5 +137,9 @@ public final class HTMLTableService {
         public String getColumnName() {
             return name;
         }
+    }
+
+    public static void main(String[] args) {
+
     }
 }

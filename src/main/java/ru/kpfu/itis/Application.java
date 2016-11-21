@@ -26,13 +26,17 @@ public class Application extends JFrame {
     private File newExcelFile; //excel to be created
 
 
+    private int sortColumn = 1; //be default 0
+
+
     public Application() {
         super("HTML -> XLSX"); //window titile
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        JFrame.setDefaultLookAndFeelDecorated(true);
         this.setResizable(false);
-        this.setBounds(500, 300, 400, 300); //size of window
+        this.setBounds(500, 300, 400, 270); //size of window
         createGUI();
-        this.setVisible(true); //make it visivle
+        this.setVisible(true); //make it visible
 
         //init services
         excelTableConverter = new ExcelTableService();
@@ -50,7 +54,7 @@ public class Application extends JFrame {
         JPanel mainPanel = new JPanel(null);
 
         JLabel chooseHtmlLabel = new JLabel("Файл не выбран");
-        chooseHtmlLabel.setBounds(20, 20, 210, 30);
+        chooseHtmlLabel.setBounds(40, 20, 210, 30);
         mainPanel.add(chooseHtmlLabel);
 
         JButton chooseHtmlBtn = new JButton("Выбрать html");
@@ -69,7 +73,7 @@ public class Application extends JFrame {
         excelFileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Документ Open XML Microsoft Excel", "xlsx"));
 
         JLabel chooseExcelLabel = new JLabel("Выбери *.xlsx файл");
-        chooseExcelLabel.setBounds(20, 60, 210, 30);
+        chooseExcelLabel.setBounds(40, 60, 210, 30);
         mainPanel.add(chooseExcelLabel);
 
         JButton chooseExcelBtn = new JButton("Выбрать excel");
@@ -83,7 +87,16 @@ public class Application extends JFrame {
             }
         });
 
+        /*
+        JLabel sortLabel = new JLabel("Сортировать по", JLabel.LEFT);
+        sortLabel.setBounds(40, 110, 120, 30);
+        mainPanel.add(sortLabel);
 
+        JComboBox<String> sortBox = new JComboBox<>(getSortColumn());
+        sortBox.setBounds(230, 110, 150, 30);
+        mainPanel.add(sortBox);
+        sortBox.addActionListener((e) -> sortColumn = sortBox.getSelectedIndex());
+        */
 
         JButton createNewExcelBtn = new JButton("Создать новый excel из html");
         createNewExcelBtn.setBounds(90, 120, 210, 40);
@@ -92,80 +105,87 @@ public class Application extends JFrame {
 
             switchButtons(false, chooseHtmlBtn, createNewExcelBtn); //disable  buttons
 
-            new Thread(() -> {
-                if (htmlFile != null) {
-                    JFileChooser save = new JFileChooser();
-                    if (JFileChooser.APPROVE_OPTION == save.showSaveDialog(mainPanel)) {
-                        newExcelFile = save.getSelectedFile();
-                        try {
-                            ExcelTable table = htmlToExcelTableConverter.createTable(htmlFile.getPath());
-                            excelTableConverter.writeTable(table, newExcelFile.getPath());
+            if (htmlFile != null) {
+                JFileChooser save = new JFileChooser();
+                if (JFileChooser.APPROVE_OPTION == save.showSaveDialog(mainPanel)) {
+                    newExcelFile = save.getSelectedFile();
+                    try {
+                        ExcelTable table = htmlToExcelTableConverter.createTable(htmlFile.getPath());
+                        excelTableConverter.writeTable(table.sort(sortColumn), newExcelFile.getPath());
 
-                            htmlFile = null; newExcelFile = null;
+                        htmlFile = null;
+                        newExcelFile = null;
 
-                            chooseHtmlLabel.setText("Файл не выбран");
-                            chooseExcelLabel.setText("Выбери *.xlsx файл");
+                        chooseHtmlLabel.setText("Файл не выбран");
+                        chooseExcelLabel.setText("Выбери *.xlsx файл");
 
-                        } catch (IOException e1) {
-                            JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
-                            switchButtons(true, chooseHtmlBtn, createNewExcelBtn);
-                            return;
-                        }
-                        JOptionPane.showMessageDialog(mainPanel, "Файл успешно сконвертирован!", "Успех", JOptionPane.INFORMATION_MESSAGE);
+                    } catch (IOException e1) {
+                        JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        switchButtons(true, chooseHtmlBtn, createNewExcelBtn);
+                        return;
                     }
-
-                } else {
-                    JOptionPane.showMessageDialog(mainPanel, "Выбери html файл!", "Ошибка", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(mainPanel, "Файл успешно сконвертирован!", "Успех", JOptionPane.INFORMATION_MESSAGE);
                 }
-            }).start();
+
+            } else {
+                JOptionPane.showMessageDialog(mainPanel, "Выбери html файл!", "Ошибка", JOptionPane.WARNING_MESSAGE);
+            }
             switchButtons(true, chooseHtmlBtn, createNewExcelBtn);
         });
 
 
-        updateExcelBtn.setBounds(90, 200, 210, 40);
+        updateExcelBtn.setBounds(90, 180, 210, 40);
         mainPanel.add(updateExcelBtn);
 
         updateExcelBtn.addActionListener(e -> {
 
             switchButtons(false, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
 
-            new Thread(() -> {
-                if (excelFile != null && htmlFile != null) {
-                    try {
+            if (excelFile != null && htmlFile != null) {
+                try {
 
-                        ExcelTable excelTable = htmlToExcelTableConverter.createTable(htmlFile.getPath());
-                        ExcelTable excelTable1 = excelTableConverter.readTable(excelFile.getPath());
+                    ExcelTable excelTable = htmlToExcelTableConverter.createTable(htmlFile.getPath());
+                    ExcelTable excelTable1 = excelTableConverter.readTable(excelFile.getPath());
 
-                        excelTable1.merge(excelTable, 3);
-                        excelTableConverter.writeTable(excelTable1.sort(1), excelFile.getPath());
+                    excelTable1.merge(excelTable, 3);
+                    excelTableConverter.writeTable(excelTable1.sort(sortColumn), excelFile.getPath());
 
-                    } catch (IOException e1) {
-                        JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
-                        switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
-                        return;
-                    }
-
-                    htmlFile = null; excelFile = null; newExcelFile = null;
-
-                    chooseHtmlLabel.setText("Файл не выбран");
-                    chooseExcelLabel.setText("Выбери *.xlsx файл");
-
-                    JOptionPane.showMessageDialog(mainPanel, "Данные успешно обновлены!", "Успех", JOptionPane.INFORMATION_MESSAGE);
-
-                } else {
-                    JOptionPane.showMessageDialog(mainPanel, "Выбери html и excel файлы!", "Ошибка", JOptionPane.WARNING_MESSAGE);
+                } catch (IOException e1) {
+                    JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                    switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
+                    return;
                 }
 
-                switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
+                htmlFile = null;
+                excelFile = null;
+                newExcelFile = null;
 
-            }).start();
+                chooseHtmlLabel.setText("Файл не выбран");
+                chooseExcelLabel.setText("Выбери *.xlsx файл");
+
+                JOptionPane.showMessageDialog(mainPanel, "Данные успешно обновлены!", "Успех", JOptionPane.INFORMATION_MESSAGE);
+
+            } else {
+                JOptionPane.showMessageDialog(mainPanel, "Выбери html и excel файлы!", "Ошибка", JOptionPane.WARNING_MESSAGE);
+            }
+
+            switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
+
 
         });
 
         this.getContentPane().add(mainPanel);
     }
 
-    private void switchButtons(boolean state, JButton ... buttons) {
+    private String[] getSortColumn() {
+        String[] values = new String[HTMLTableService.ColumnHeaders.values().length - 1];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = HTMLTableService.ColumnHeaders.values()[i].getColumnName();
+        }
+        return values;
+    }
+
+    private void switchButtons(boolean state, JButton... buttons) {
         for (JButton b : buttons) {
             b.setEnabled(state);
         }
