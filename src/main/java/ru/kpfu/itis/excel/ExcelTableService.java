@@ -1,18 +1,230 @@
 package ru.kpfu.itis.excel;
 
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import ru.kpfu.itis.html.HTMLTableService;
 import ru.kpfu.itis.table.ExcelTable;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
+
+import static org.apache.poi.ss.usermodel.CellType.*;
+
 
 /**
  * Excel - Table converter
  */
 public final class ExcelTableService {
+
+
+    public void writeTwoTables(CellData[][] tableLeft, ExcelTable tableRight) {
+
+        System.out.println(Arrays.deepToString(tableLeft));
+
+        System.out.println("\n\n\n\n\n");
+
+        System.out.println(tableRight);
+    }
+
+    //reads first table
+    private CellData[][] readTable1(String path) throws IOException {
+
+        XSSFWorkbook workbook = new XSSFWorkbook(path);
+
+        XSSFSheet sheet = workbook.getSheetAt(0);
+
+        if (sheet == null) throw new IllegalArgumentException("There is no sheets in the document");
+
+        final int rows = sheet.getLastRowNum() + 1;
+
+        CellData[][] cellData = new CellData[rows][3];
+
+        sheet.forEach(new Consumer<Row>() {
+            private int rowIdx = 0;
+            @Override
+            public void accept(Row row) {
+                for (int k = 0; k < 3; k++) {
+                    Cell cell = row.getCell(k);
+                    cellData[rowIdx][k] = readCellValue1(cell);
+                }
+                ++rowIdx;
+            }
+        });
+        close(workbook);
+
+        return cellData;
+    }
+
+
+
+    //reads second table
+    public Wrapper readTable2(String path) throws IOException, InvalidFormatException {
+
+        XSSFWorkbook workbook = readWorkbook(path);
+
+        XSSFSheet sheet = workbook.getSheetAt(0); //get first sheet
+
+        if (sheet == null) throw new IllegalArgumentException("There is no sheets in the document");
+
+        final int rows = sheet.getLastRowNum() + 1;
+        final int columns = sheet.getRow(0).getLastCellNum();
+
+        ExcelTable table = new ExcelTable(rows, columns - 3);
+        CellData[][] cellData = new CellData[rows][columns - 3];
+
+        sheet.forEach(new Consumer<Row>() {
+            private int rowIdx = 0;
+            @Override
+            public void accept(Row row) {
+                List<String> values = new ArrayList<>(columns - 3); //cell values of row
+                for (int k = 3, colIdx = k - 3; k < columns; k++, colIdx++) {
+                    Cell cell = row.getCell(k);
+                    if (k == 3 && readCellValue2(cell).valueString().equals("")) {
+                        return;
+                    }
+                    CellData value = readCellValue2(cell);
+                    cellData[rowIdx][colIdx] = value;
+                    values.add(value.valueString());
+                }
+                ++rowIdx;
+                table.addRow(values.get(0), values.toArray(new String[0])); //in each row the key is data-id (first cell)
+            }
+        });
+
+        close(workbook);
+        return new Wrapper(table, cellData);
+    }
+
+
+    //for table's first part
+    private CellData readCellValue1(Cell cell) {
+        if (cell == null) return new CellData("", BLANK);
+        switch (cell.getCellTypeEnum()) {
+            case BLANK:
+                return new CellData("", BLANK);
+            case STRING:
+                return new CellData(cell.getStringCellValue(), STRING);
+            case NUMERIC:
+                if (isInteger(cell.getNumericCellValue())) {
+                    return new CellData((int) cell.getNumericCellValue(), NUMERIC);
+                }
+                return new CellData(cell.getNumericCellValue(), NUMERIC);
+            case ERROR:
+                return new CellData(cell.getErrorCellValue(), ERROR);
+            case BOOLEAN:
+                return new CellData(cell.getBooleanCellValue(), BOOLEAN);
+            case FORMULA:
+                return new CellData(cell.getCellFormula(), FORMULA);
+            default:
+                return new CellData("", STRING);
+        }
+    }
+
+
+    //for table's second part
+    private CellData readCellValue2(Cell cell) {
+        if (cell == null) return new CellData("", BLANK);
+        switch (cell.getCellTypeEnum()) {
+            case BLANK:
+                return new CellData("", STRING);
+            case STRING:
+                return new CellData(cell.getStringCellValue(), STRING);
+            case NUMERIC:
+                if (isInteger(cell.getNumericCellValue())) {
+                    return new CellData((int) cell.getNumericCellValue(), NUMERIC);
+                }
+                return new CellData(cell.getNumericCellValue(), NUMERIC);
+            case ERROR:
+                return new CellData(Byte.toString(cell.getErrorCellValue()), STRING);
+            case BOOLEAN:
+                return new CellData(Boolean.toString(cell.getBooleanCellValue()), STRING);
+            case FORMULA:
+                return new CellData(cell.getCellFormula(), FORMULA);
+            default:
+                return new CellData("", STRING);
+        }
+    }
+
+
+    private boolean isInteger(Double d) {
+        return d.toString().matches("^[0-9]+(.0)?$");
+    }
+
+    public static void main(String[] args) throws IOException, InvalidFormatException {
+        HTMLTableService htmlTableService = new HTMLTableService();
+        ExcelTableService excelTableService = new ExcelTableService();
+
+        ExcelTable excelTable = htmlTableService.createTable("/Users/Ramil/Desktop/site.html"); //create table from html
+        CellData[][] table1 = excelTableService.readTable1("/Users/Ramil/Desktop/doc.xlsx"); //read 1
+        Wrapper wrapper = excelTableService.readTable2("/Users/Ramil/Desktop/doc.xlsx"); // and 2 tables form file
+
+        System.out.println(wrapper.get);
+
+//        ExcelTable table2 = wrapper.getTable();
+//        excelTable1.merge(excelTable, 3);
+//        excelTableConverter.writeTwoTable(excelTable1.sort(sortColumn), wrapper.getCellData(), excelFile.getPath());
+    }
+
+
+    private XSSFWorkbook readWorkbook(String path) throws IOException, InvalidFormatException {
+        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(path))) {
+            return new XSSFWorkbook(in); //we should close it when stop working with it, see docs
+        }
+    }
+
+
+    private void setUpColumnWidth(Sheet sheet) {
+        for (int i = 0; i < sheet.getLastRowNum(); i++) {
+            sheet.autoSizeColumn(i);
+        }
+    }
+
+
+    private void close(Workbook workbook) {
+        try {
+            workbook.close();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+        } finally {
+            try {
+                workbook.close();
+            } catch (IOException e) { /* nothing to do  */}
+        }
+    }
+
+
+    public static class CellData {
+
+        private final Object data; //data of cell
+        private final CellType cellType;
+
+        public CellData(Object data, CellType cellType) {
+            this.data = data;
+            this.cellType = cellType;
+        }
+
+        public Object getData() {
+            return data;
+        }
+
+        public CellType getCellType() {
+            return cellType;
+        }
+
+        public String valueString() {
+            return data.toString();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("{ %s, %s }\n", data.toString(), cellType);
+        }
+    }
 
 
     /**
@@ -22,13 +234,13 @@ public final class ExcelTableService {
      * @param path       - path to file
      * @throws IOException - if occurred an exception while we were writing to the file
      */
+
     public void writeTable(ExcelTable excelTable, String path) throws IOException {
 
         XSSFWorkbook workbook = new XSSFWorkbook(); //create new workbook
 
         XSSFSheet sheet = workbook.createSheet(); //create new sheet with index 0
 
-        CellStyle cellStyle = createCellStyle(sheet);
         int currentRow = 0;
 
         for (String keyRow : excelTable.rowKeys()) {
@@ -37,13 +249,12 @@ public final class ExcelTableService {
             Row row = sheet.createRow(currentRow++); //increment rowCount
 
             for (String keyColumn : excelTable.columnKeys()) {
-                type = (columnCount >= 3 && isNumeric(excelTable.getValue(keyRow, keyColumn))) ? CellType.NUMERIC : CellType.STRING;
+                type = (columnCount >= 3 && isNumericString(excelTable.getValue(keyRow, keyColumn))) ? CellType.NUMERIC : CellType.STRING;
                 Cell cell = row.createCell(columnCount++, type); //increment columnCount
-                cell.setCellStyle(cellStyle); //style of cell
                 String value = excelTable.getValue(keyRow, keyColumn);
 
                 if (type == CellType.NUMERIC) {
-                    cell.setCellValue(getNumeric(value));
+                    cell.setCellValue(getNumericString(value));
                 } else {
                     cell.setCellValue((value == null) ? "" : value); //to be sure
                 }
@@ -59,11 +270,12 @@ public final class ExcelTableService {
         }
     }
 
-    private int getNumeric(String value) {
+
+    private int getNumericString(String value) {
         return value.isEmpty() ? 0 : Integer.parseInt(value);
     }
 
-    private boolean isNumeric(String value) {
+    private boolean isNumericString(String value) {
         try {
             if (value.isEmpty()) return true;
             Integer.parseInt(value);
@@ -73,150 +285,5 @@ public final class ExcelTableService {
         }
     }
 
-
-    /**
-     * Reads table instance from an existing file
-     *
-     * @param path - path to an existing file
-     * @return - created table
-     */
-    public ExcelTable readTable(String path) throws IOException {
-
-        XSSFWorkbook workbook = readWorkbook(path);
-
-        XSSFSheet sheet = workbook.getSheetAt(0); //get first sheet
-
-        if (sheet == null) throw new IllegalArgumentException("There is no sheets in the document");
-
-        final int columns = getColumnRealCount(sheet.getRow(0), false);
-        final int rows = sheet.getLastRowNum() + 1;
-
-        ExcelTable table = new ExcelTable(rows, columns);
-
-        sheet.forEach(cells -> {
-            if (cells.getFirstCellNum() == -1) return; //doesn't contain any cells
-
-            List<String> values = new ArrayList<>(columns); //cell values of row
-
-            for (int k = 0; k < columns; k++) {
-                Cell cell = cells.getCell(k);
-                values.add(readCellValue(cell));
-            }
-
-            table.addRow(values.get(0), values.toArray(new String[0])); //in each row the key is data-id (first cell)
-        });
-        close(workbook); //don't forget to close workbook
-
-        return table;
-    }
-
-
-    /**
-     * Returns real count of columns in the row
-     *
-     * @param row - excell file row
-     * @return integer, real count of columns
-     */
-    private int getColumnRealCount(Row row, boolean hasEmpty) {
-
-        if (row == null) return 0; //if there is no row
-
-        int i; //to return
-
-        for (i = 0; i < row.getLastCellNum(); i++) {
-            Cell cell = row.getCell(i);
-            if (cell == null) return i;
-            if (!hasEmpty && cell.getStringCellValue().isEmpty()) return i;
-        }
-
-        return row.getLastCellNum();
-    }
-
-
-    /**
-     * Reads cell's value depends on data type in it
-     *
-     * @param cell - document cell
-     * @return String representation of value in cell
-     */
-    @SuppressWarnings("deprecated")
-    private String readCellValue(Cell cell) {
-
-        if (cell == null) return "";
-
-        switch (cell.getCellType()) {
-            case Cell.CELL_TYPE_STRING:
-                return cell.getStringCellValue();
-            case Cell.CELL_TYPE_BLANK:
-                return "";
-            case Cell.CELL_TYPE_BOOLEAN:
-                return Boolean.toString(cell.getBooleanCellValue());
-            case Cell.CELL_TYPE_NUMERIC:
-                return Integer.toString((int) cell.getNumericCellValue());
-            default:
-                return "undefined";
-        }
-    }
-
-
-    /**
-     * Reads workbook
-     *
-     * @param path - path to excel-file
-     * @return xlsx workbook representation
-     * @throws IOException - file read expetion
-     */
-    private XSSFWorkbook readWorkbook(String path) throws IOException {
-
-        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(path))) {
-            return new XSSFWorkbook(in);
-        }
-    }
-
-
-    private void setUpColumnWidth(Sheet sheet) {
-        for (int i = 0; i < sheet.getLastRowNum(); i++) {
-            sheet.autoSizeColumn(i);
-        }
-
-    }
-
-    private static final short DEFAULT_FONT_SIZE = 9;
-    private static final short DEFAULT_INDENT = 1;
-
-
-    private static CellStyle createCellStyle(Sheet sheet) {
-        CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
-
-        //font
-        Font font = sheet.getWorkbook().createFont();
-        font.setFontHeightInPoints(DEFAULT_FONT_SIZE);
-        cellStyle.setFont(font);
-
-        //alignment
-        cellStyle.setAlignment(HorizontalAlignment.LEFT);
-
-        //indention
-        cellStyle.setIndention(DEFAULT_INDENT);
-        return cellStyle;
-    }
-
-
-    /**
-     * Closes workbook
-     */
-    private void close(Workbook workbook) {
-        if (workbook != null) {
-            try {
-                workbook.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    workbook.close();
-                } catch (IOException e) { /* nothing to do, can't close this shit */ }
-            }
-        }
-    }
 
 }

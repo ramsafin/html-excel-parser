@@ -140,22 +140,21 @@ public class Application extends JFrame {
         updateExcelBtn.addActionListener(e -> {
 
             switchButtons(false, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
-
+/*
             if (excelFile != null && htmlFile != null) {
                 try {
 
                     ExcelTable excelTable = htmlToExcelTableConverter.createTable(htmlFile.getPath());
-                    ExcelTable excelTable1 = excelTableConverter.readTable(excelFile.getPath());
-
+                    Wrapper wrapper = excelTableConverter.readTable2(excelFile.getPath());
+                    ExcelTable excelTable1 = wrapper.getTable();
                     excelTable1.merge(excelTable, 3);
-                    excelTableConverter.writeTable(excelTable1.sort(sortColumn), excelFile.getPath());
+                    excelTableConverter.writeTwoTable(excelTable1.sort(sortColumn), wrapper.getCellData(), excelFile.getPath()); TODO write 2 tables
 
-                } catch (IOException e1) {
+                } catch (IOException | InvalidFormatException e1) {
                     JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
                     return;
                 }
-
                 htmlFile = null;
                 excelFile = null;
                 newExcelFile = null;
@@ -171,6 +170,7 @@ public class Application extends JFrame {
 
             switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
 
+*/
 
         });
 
