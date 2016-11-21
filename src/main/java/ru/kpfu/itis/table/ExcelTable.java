@@ -158,6 +158,7 @@ public final class ExcelTable {
 
                 //if row exists in the old table, merge with it
                 mergeRow(mergeTable.getTable().row(rowKey), rowKey, columns);
+
             } else {
 
                 //else add first column cells of row
@@ -264,13 +265,20 @@ public final class ExcelTable {
 
 
     private void addRowWithoutCheck(String rowKey, String[] values) {
+
         if (values.length < columnCount()) {
             int old = values.length;
             values = Arrays.copyOfRange(values, 0, columnCount());
-            Arrays.fill(values, columnCount() - old, columnCount(), "");
+            Arrays.fill(values, old, columnCount(), "");
         }
+
         for (int i = 0; i < values.length; i++) {
-            table.put(rowKey, this.generatedColumnKeys.get(i), values[i]);
+            try {
+
+                table.put(rowKey, this.generatedColumnKeys.get(i), values[i]);
+            } catch (NullPointerException e) {
+                System.out.println(String.format("Index %d", i));
+            }
         }
     }
 

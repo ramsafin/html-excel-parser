@@ -40,12 +40,13 @@ public final class ExcelTableService {
 
         if (sheet == null) throw new IllegalArgumentException("There is no sheets in the document");
 
-        final int rows = sheet.getLastRowNum() + 1;
+        final int rows = sheet.getPhysicalNumberOfRows(); //NOTICE: Might be exceptions
 
         CellData[][] cellData = new CellData[rows][3];
 
         sheet.forEach(new Consumer<Row>() {
             private int rowIdx = 0;
+
             @Override
             public void accept(Row row) {
                 for (int k = 0; k < 3; k++) {
@@ -61,9 +62,8 @@ public final class ExcelTableService {
     }
 
 
-
     //reads second table
-    public Wrapper readTable2(String path) throws IOException, InvalidFormatException {
+    public ExcelTable readTable2(String path) throws IOException, InvalidFormatException {
 
         XSSFWorkbook workbook = readWorkbook(path);
 
@@ -75,29 +75,22 @@ public final class ExcelTableService {
         final int columns = sheet.getRow(0).getLastCellNum();
 
         ExcelTable table = new ExcelTable(rows, columns - 3);
-        CellData[][] cellData = new CellData[rows][columns - 3];
 
-        sheet.forEach(new Consumer<Row>() {
-            private int rowIdx = 0;
-            @Override
-            public void accept(Row row) {
-                List<String> values = new ArrayList<>(columns - 3); //cell values of row
-                for (int k = 3, colIdx = k - 3; k < columns; k++, colIdx++) {
-                    Cell cell = row.getCell(k);
-                    if (k == 3 && readCellValue2(cell).valueString().equals("")) {
-                        return;
-                    }
-                    CellData value = readCellValue2(cell);
-                    cellData[rowIdx][colIdx] = value;
-                    values.add(value.valueString());
+        sheet.forEach(row -> {
+            List<String> values = new ArrayList<>(columns - 3); //cell values of row
+            for (int k = 3, colIdx = k - 3; k < columns; k++, colIdx++) {
+                Cell cell = row.getCell(k);
+                if (k == 3 && readCellValue2(cell).valueString().equals("")) {
+                    return;
                 }
-                ++rowIdx;
-                table.addRow(values.get(0), values.toArray(new String[0])); //in each row the key is data-id (first cell)
+                CellData value = readCellValue2(cell);
+                values.add(value.valueString());
             }
+            table.addRow(values.get(0), values.toArray(new String[0])); //in each row the key is data-id (first cell)
         });
-
         close(workbook);
-        return new Wrapper(table, cellData);
+
+        return table;
     }
 
 
@@ -159,11 +152,17 @@ public final class ExcelTableService {
         HTMLTableService htmlTableService = new HTMLTableService();
         ExcelTableService excelTableService = new ExcelTableService();
 
-        ExcelTable excelTable = htmlTableService.createTable("/Users/Ramil/Desktop/site.html"); //create table from html
-        CellData[][] table1 = excelTableService.readTable1("/Users/Ramil/Desktop/doc.xlsx"); //read 1
-        Wrapper wrapper = excelTableService.readTable2("/Users/Ramil/Desktop/doc.xlsx"); // and 2 tables form file
+        ExcelTable htmlTable = htmlTableService.createTable("/Users/Ramil/Desktop/site.html"); //create table from html
 
-        System.out.println(wrapper.get);
+//        excelTableService.writeTable(htmlTable.sort(0), "/Users/Ramil/Desktop/doc.xlsx");
+
+//        CellData[][] table1 = excelTableService.readTable1("/Users/Ramil/Desktop/doc.xlsx"); //read 1
+        ExcelTable table2 = excelTableService.readTable2("/Users/Ramil/Desktop/doc.xlsx"); // and 2 tables from file
+
+        //merge html and table2
+        table2.merge(htmlTable, 3); // 3 columns
+//
+        System.out.println(table2);
 
 //        ExcelTable table2 = wrapper.getTable();
 //        excelTable1.merge(excelTable, 3);
@@ -227,14 +226,7 @@ public final class ExcelTableService {
     }
 
 
-    /**
-     * Write table to the new .xlsx file
-     *
-     * @param excelTable - table to be written
-     * @param path       - path to file
-     * @throws IOException - if occurred an exception while we were writing to the file
-     */
-
+    //writes to new file
     public void writeTable(ExcelTable excelTable, String path) throws IOException {
 
         XSSFWorkbook workbook = new XSSFWorkbook(); //create new workbook
@@ -244,7 +236,7 @@ public final class ExcelTableService {
         int currentRow = 0;
 
         for (String keyRow : excelTable.rowKeys()) {
-            int columnCount = 0;
+            int columnCount = 3;
             CellType type; //cell type
             Row row = sheet.createRow(currentRow++); //increment rowCount
 
