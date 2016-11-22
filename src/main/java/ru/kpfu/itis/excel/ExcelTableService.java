@@ -148,28 +148,6 @@ public final class ExcelTableService {
         return d.toString().matches("^[0-9]+(.0)?$");
     }
 
-    public static void main(String[] args) throws IOException, InvalidFormatException {
-        HTMLTableService htmlTableService = new HTMLTableService();
-        ExcelTableService excelTableService = new ExcelTableService();
-
-        ExcelTable htmlTable = htmlTableService.createTable("/Users/Ramil/Desktop/site.html"); //create table from html
-
-//        excelTableService.writeTable(htmlTable.sort(0), "/Users/Ramil/Desktop/doc.xlsx");
-
-//        CellData[][] table1 = excelTableService.readTable1("/Users/Ramil/Desktop/doc.xlsx"); //read 1
-        ExcelTable table2 = excelTableService.readTable2("/Users/Ramil/Desktop/doc.xlsx"); // and 2 tables from file
-
-        //merge html and table2
-        table2.merge(htmlTable, 3); // 3 columns
-//
-        System.out.println(table2);
-
-//        ExcelTable table2 = wrapper.getTable();
-//        excelTable1.merge(excelTable, 3);
-//        excelTableConverter.writeTwoTable(excelTable1.sort(sortColumn), wrapper.getCellData(), excelFile.getPath());
-    }
-
-
     private XSSFWorkbook readWorkbook(String path) throws IOException, InvalidFormatException {
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(path))) {
             return new XSSFWorkbook(in); //we should close it when stop working with it, see docs
@@ -241,7 +219,7 @@ public final class ExcelTableService {
             Row row = sheet.createRow(currentRow++); //increment rowCount
 
             for (String keyColumn : excelTable.columnKeys()) {
-                type = (columnCount >= 3 && isNumericString(excelTable.getValue(keyRow, keyColumn))) ? CellType.NUMERIC : CellType.STRING;
+                type = (columnCount >= 6 && isNumericString(excelTable.getValue(keyRow, keyColumn))) ? CellType.NUMERIC : CellType.STRING;
                 Cell cell = row.createCell(columnCount++, type); //increment columnCount
                 String value = excelTable.getValue(keyRow, keyColumn);
 
@@ -275,6 +253,26 @@ public final class ExcelTableService {
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+
+
+    public static void main(String[] args) throws IOException, InvalidFormatException {
+        HTMLTableService htmlTableService = new HTMLTableService();
+        ExcelTableService excelTableService = new ExcelTableService();
+
+        ExcelTable htmlTable = htmlTableService.createTable("/Users/Ramil/Desktop/site.html"); //create table from html
+
+        excelTableService.writeTable(htmlTable.sort(0), "/Users/Ramil/Desktop/doc.xlsx"); //to create new xlsx
+
+        //to update
+//        CellData[][] table1 = excelTableService.readTable1("/Users/Ramil/Desktop/doc.xlsx"); //read 1
+//        ExcelTable table2 = excelTableService.readTable2("/Users/Ramil/Desktop/doc.xlsx"); // and 2 tables from file
+//
+        //merge html and table2
+//        table2.merge(htmlTable, 3); // 3 columns
+//
+//        excelTableService.writeTwoTables(table1, table2.sort(1));
     }
 
 
