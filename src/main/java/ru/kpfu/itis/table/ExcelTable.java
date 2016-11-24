@@ -405,4 +405,13 @@ public final class ExcelTable {
         return values.toArray(new String[0]);
     }
 
+
+    public String getColumnKey(int idx) {
+        if (idx >= generatedColumnKeys.size()) {
+            throw new IndexOutOfBoundsException(String.format("Index %d is out of bounds. [ %d ]",
+                    idx, columnCount()));
+        }
+
+        return generatedColumnKeys.get(idx);
+    }
 }

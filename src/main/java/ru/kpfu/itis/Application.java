@@ -30,7 +30,7 @@ public class Application extends JFrame {
 
 
     public Application() {
-        super("HTML -> XLSX"); //window titile
+        super("HTML -> XLSX"); //window title
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         JFrame.setDefaultLookAndFeelDecorated(true);
         this.setResizable(false);
@@ -87,16 +87,6 @@ public class Application extends JFrame {
             }
         });
 
-        /*
-        JLabel sortLabel = new JLabel("Сортировать по", JLabel.LEFT);
-        sortLabel.setBounds(40, 110, 120, 30);
-        mainPanel.add(sortLabel);
-
-        JComboBox<String> sortBox = new JComboBox<>(getSortColumn());
-        sortBox.setBounds(230, 110, 150, 30);
-        mainPanel.add(sortBox);
-        sortBox.addActionListener((e) -> sortColumn = sortBox.getSelectedIndex());
-        */
 
         JButton createNewExcelBtn = new JButton("Создать новый excel из html");
         createNewExcelBtn.setBounds(90, 120, 210, 40);
@@ -140,16 +130,18 @@ public class Application extends JFrame {
         updateExcelBtn.addActionListener(e -> {
 
             switchButtons(false, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
-/*
+
             if (excelFile != null && htmlFile != null) {
                 try {
 
                     ExcelTable excelTable = htmlToExcelTableConverter.createTable(htmlFile.getPath());
-//                    ExcelTable excelTable1 = excelTableConverter.readTable2(excelFile.getPath());
-//                    excelTable1.merge(excelTable, 3);
-//                    excelTableConverter.writeTable(excelTable1.sort(sortColumn), excelFile.getPath()); TODO write 2 tables
+                    ExcelTable oldTable2 = excelTableConverter.readTable2(excelFile.getPath()); //get 2 and 1 tables
+                    ExcelTableService.CellData[][] table1 = excelTableConverter.readTable1(excelFile.getPath());
 
-                } catch (IOException | InvalidFormatException e1) {
+                    oldTable2.merge(excelTable, 3);
+                    excelTableConverter.writeTwoTables(table1, oldTable2, resolvePath(excelFile.getPath()));
+
+                } catch (IOException | RuntimeException e1) {
                     JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
                     return;
@@ -168,7 +160,6 @@ public class Application extends JFrame {
             }
 
             switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
-*/
 
 
         });
@@ -176,12 +167,11 @@ public class Application extends JFrame {
         this.getContentPane().add(mainPanel);
     }
 
-    private String[] getSortColumn() {
-        String[] values = new String[HTMLTableService.ColumnHeaders.values().length - 1];
-        for (int i = 0; i < values.length; i++) {
-            values[i] = HTMLTableService.ColumnHeaders.values()[i].getColumnName();
+    private String resolvePath(String string) {
+        if (string.endsWith(".xlsx")) {
+            return string.substring(0, string.lastIndexOf('.')) + "_new.xlsx";
         }
-        return values;
+        return string + "_new.xlsx";
     }
 
     private void switchButtons(boolean state, JButton... buttons) {
@@ -189,7 +179,6 @@ public class Application extends JFrame {
             b.setEnabled(state);
         }
     }
-
 
     public static void main(String[] args) throws IOException, InvalidFormatException {
         SwingUtilities.invokeLater(Application::new);
