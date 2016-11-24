@@ -48,6 +48,7 @@ public final class HTMLTableService {
      * @return ExcelTable instance
      */
     private ExcelTable buildTable(Elements tableRows) {
+
         String[] headers = createHeaders(); //create headers
 
         final ExcelTable table = new ExcelTable(tableRows.size(), headers.length); //create table
@@ -139,7 +140,15 @@ public final class HTMLTableService {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+
+        HTMLTableService tableService = new HTMLTableService();
+
+        //create table form html
+        ExcelTable table = tableService.createTable("/Users/Ramil/Desktop/site.html");
+
+        System.out.println(table.getTable().column("1")); // get the column of html parsed table
 
     }
+
 }
