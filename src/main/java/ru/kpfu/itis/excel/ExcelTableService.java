@@ -5,9 +5,11 @@ import com.google.common.primitives.Doubles;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbookType;
+import ru.kpfu.itis.html.HTMLTableService;
 import ru.kpfu.itis.table.ExcelTable;
 
 import java.io.BufferedOutputStream;
@@ -29,12 +31,12 @@ public final class ExcelTableService {
     private static final String BLANK_VALUE = "";
 
     public ExcelTableService() {
-        ZipSecureFile.setMinInflateRatio(0.0001);
+        ZipSecureFile.setMinInflateRatio(1E-5);
     }
 
     public void writeTwoTables(CellData[][] tableLeft, ExcelTable tableRight, String path) throws IOException {
 
-        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFWorkbook workbook = new XSSFWorkbook(XSSFWorkbookType.XLSX);
 
         XSSFSheet sheet = workbook.createSheet();
 
@@ -50,14 +52,12 @@ public final class ExcelTableService {
 
                 for (int i = 0; i < 3; i++) {
                     Cell cell = row.createCell(i);
-                    setupCell(cell, workbook);
                     writeCellValue1(cell, tableLeft[rowIdx][i]); //write rowIdx row, 3 columns (0 ... 2)
                 }
 
                 for (int i = 0; i < tableRight.columnCount(); i++) {
                     CellData cellData = getCellData(tableRight.getValue(rowKey, tableRight.getColumnKey(i)), i, 3);
                     Cell cell = row.createCell(i + 3, cellData.getCellType());
-                    setupCell(cell, workbook);
                     if (cellData.getCellType() == NUMERIC) {
                         if (cellData.isInteger()) {
                             cell.setCellValue(cellData.getIntData());
@@ -76,7 +76,6 @@ public final class ExcelTableService {
                         row = sheet.createRow(i);
                         for (int j = 0; j < 3; j++) {
                             Cell cell = row.createCell(j);
-                            setupCell(cell, workbook);
                             writeCellValue1(cell, tableLeft[i][j]);
                         }
                     }
@@ -85,10 +84,9 @@ public final class ExcelTableService {
             }
         });
 
-        setUpColumnWidth(sheet);
+        setUpColumnWidth(sheet, tableLeft[0].length + tableRight.columnCount());
 
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(path, false))) {
-            workbook.setWorkbookType(XSSFWorkbookType.XLSX);
             workbook.write(out); //write to file all workbook
         } finally {
             close(workbook);
@@ -121,7 +119,6 @@ public final class ExcelTableService {
                 throw new IllegalArgumentException("There is no such type of cell");
         }
     }
-
 
 
     //reads first table
@@ -202,11 +199,17 @@ public final class ExcelTableService {
         return DoubleMath.isMathematicalInteger(d);
     }
 
-    private void setUpColumnWidth(Sheet sheet) {
-        for (int i = 0; i < sheet.getLastRowNum(); i++) {
-            sheet.autoSizeColumn(i);
+    private void setUpColumnWidth(Sheet sheet, int columns) {
+        sheet.setColumnWidth(0, 12 * 256);
+        sheet.setColumnWidth(1, 12 * 256);
+        sheet.setColumnWidth(2, 12 * 256);
+        sheet.setColumnWidth(3, 6 * 256);
+        sheet.setColumnWidth(4, 48 * 256);
+        sheet.setColumnWidth(5, 18 * 256);
+        for (int i = 6; i < columns; i++) {
+            sheet.setColumnWidth(i, 6 * 256);
         }
-        sheet.setHorizontallyCenter(true);
+//        sheet.setHorizontallyCenter(true); TODO uncomment
     }
 
 
@@ -281,7 +284,7 @@ public final class ExcelTableService {
 
     //writes 3 + 4 columns only, creates new file
     public void writeTable(ExcelTable excelTable, String path) throws IOException {
-        XSSFWorkbook workbook = new XSSFWorkbook(); //create new workbook
+        XSSFWorkbook workbook = new XSSFWorkbook(XSSFWorkbookType.XLSX); //create new workbook
         XSSFSheet sheet = workbook.createSheet(); //create new sheet with index 0
 
         int currentRow = 0;
@@ -291,7 +294,7 @@ public final class ExcelTableService {
             Row row = sheet.createRow(currentRow++); //increment rowCount
 
             for (String keyColumn : excelTable.columnKeys()) {
-                CellData cellData = getCellData(excelTable.getValue(keyRow, keyColumn), columnCount, 7);
+                CellData cellData = getCellData(excelTable.getValue(keyRow, keyColumn), columnCount, 6);
                 Cell cell = row.createCell(columnCount++, cellData.getCellType()); //increment columnCount
                 if (cellData.getCellType() == NUMERIC) {
                     if (cellData.isInteger()) {
@@ -302,9 +305,10 @@ public final class ExcelTableService {
                 } else {
                     cell.setCellValue(cellData.getStringValue());
                 }
+
             }
         }
-        setUpColumnWidth(sheet);
+        setUpColumnWidth(sheet, 7);
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(path, false))) {
             workbook.write(out); //write to file all workbook
         } finally {
@@ -312,10 +316,11 @@ public final class ExcelTableService {
         }
     }
 
-    private void setupCell(Cell cell, Workbook workbook) {
-        CellStyle cellStyle = workbook.createCellStyle();
+    //TODO don't work
+    private void setupCell(Cell cell, XSSFWorkbook workbook, int column) {
+        XSSFCellStyle cellStyle = workbook.createCellStyle();
         cellStyle.setAlignment(HorizontalAlignment.LEFT);
-        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        if (column >= 5) cellStyle.setAlignment(HorizontalAlignment.CENTER);
         cell.setCellStyle(cellStyle);
     }
 
@@ -326,6 +331,26 @@ public final class ExcelTableService {
             if (d != null) return new CellData(d, NUMERIC);
         }
         return new CellData(value, STRING);
+    }
+
+    public static void main(String[] args) throws IOException {
+
+        HTMLTableService service = new HTMLTableService();
+        ExcelTableService service1 = new ExcelTableService();
+
+//        ExcelTable table = service.createTable("/Users/Ramil/Desktop/site.html");
+//        CellData [][] cellData = service1.readTable1("/Users/Ramil/Desktop/doc.xlsx");
+        ExcelTable table2 = service1.readTable2("/Users/Ramil/Desktop/doc.xlsx");
+
+        service1.writeTable(table2, "/Users/Ramil/Desktop/doc.xlsx");
+
+//        ExcelTable tableUpdate = service1.readTable2("/Users/Ramil/Desktop/docUpdate.xlsx");
+
+//        table2.merge(tableUpdate, 3);
+//
+//        service1.writeTwoTables(cellData, table2.sort(1), "/Users/Ramil/Desktop/doc1.xlsx");
+
+
     }
 
 }

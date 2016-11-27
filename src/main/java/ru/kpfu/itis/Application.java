@@ -134,14 +134,15 @@ public class Application extends JFrame {
             if (excelFile != null && htmlFile != null) {
                 try {
 
-                    ExcelTable excelTable = htmlToExcelTableConverter.createTable(htmlFile.getPath());
+                    ExcelTable table = htmlToExcelTableConverter.createTable(htmlFile.getPath());
                     ExcelTable oldTable2 = excelTableConverter.readTable2(excelFile.getPath()); //get 2 and 1 tables
                     ExcelTableService.CellData[][] table1 = excelTableConverter.readTable1(excelFile.getPath());
 
-                    oldTable2.merge(excelTable, 3);
-                    excelTableConverter.writeTwoTables(table1, oldTable2, resolvePath(excelFile.getPath()));
+                    oldTable2.merge(table, 3);
+                    excelTableConverter.writeTwoTables(table1, oldTable2.sort(1), excelFile.getPath());
 
                 } catch (IOException | RuntimeException e1) {
+                    e1.printStackTrace();
                     JOptionPane.showMessageDialog(mainPanel, e1.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
                     switchButtons(true, chooseHtmlBtn, chooseExcelBtn, updateExcelBtn, createNewExcelBtn);
                     return;
@@ -167,12 +168,7 @@ public class Application extends JFrame {
         this.getContentPane().add(mainPanel);
     }
 
-    private String resolvePath(String string) {
-        if (string.endsWith(".xlsx")) {
-            return string.substring(0, string.lastIndexOf('.')) + "_new.xlsx";
-        }
-        return string + "_new.xlsx";
-    }
+
 
     private void switchButtons(boolean state, JButton... buttons) {
         for (JButton b : buttons) {
